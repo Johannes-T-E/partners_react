@@ -7,8 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@game': path.resolve(__dirname, '../src'),
-      '@web-ui': path.resolve(__dirname, '../web-ui'),
+      '@game': path.resolve(__dirname, './shared/src'),
+      '@web-ui': path.resolve(__dirname, './shared/web-ui'),
     },
   },
   server: {

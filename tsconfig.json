@@ -18,10 +18,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@game/*": ["../src/*"],
-      "@web-ui/*": ["../web-ui/*"]
+      "@game/*": ["./shared/src/*"],
+      "@web-ui/*": ["./shared/web-ui/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "shared"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
