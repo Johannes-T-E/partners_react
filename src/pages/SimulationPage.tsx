@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   runGameWithHistory,
@@ -12,11 +12,14 @@ import { useStrategy } from '@/contexts/StrategyContext';
 import { getColorsForPlayerCount, partnersExist, getPartnerIndex } from '@game/index';
 import type { GameSettings } from '@game/types';
 import type { GameResultWithHistory, SimulationResult, PerPlayerHistoryStats } from '@game/simulation';
+import type { SimulationData } from '@/contexts/SimulationContext';
 import SimulationResultsStats from '@/components/SimulationResultsStats';
 import SimulationResultsGames from '@/components/SimulationResultsGames';
 import { createDefaultBoardLayoutConfig, type BoardLayoutConfig } from '@/lib/board-layout-config';
 import { getColorHex } from '@/lib/color-utils';
 import { useSimulation } from '@/contexts/SimulationContext';
+
+const EXPORT_VERSION = 1;
 
 type StrategyName = 'random' | 'smart' | 'smartplus' | 'custom';
 
@@ -72,6 +75,8 @@ export default function SimulationPage() {
   const [selectedGameIndex, setSelectedGameIndex] = useState<number | null>(null);
   const [selectedGameIndices, setSelectedGameIndices] = useState<number[]>([]);
   const [layoutConfig, setLayoutConfig] = useState<BoardLayoutConfig>(() => createDefaultBoardLayoutConfig());
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLayoutConfig(createDefaultBoardLayoutConfig({ playerCount: players, pawnsPerPlayer: pawns, trackTilesPerPlayer: tiles }));
@@ -225,6 +230,72 @@ export default function SimulationPage() {
     }
   };
 
+  const handleExport = () => {
+    if (!result || games.length === 0) return;
+    const data: SimulationData & { version: number } = {
+      version: EXPORT_VERSION,
+      result,
+      games,
+      playerCount: players,
+      playerAliases: playerAliases.slice(0, players),
+      gameSettings: settings,
+      layoutConfig,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `partners-simulation-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const validateImportData = (data: unknown): data is SimulationData => {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as Record<string, unknown>;
+    if (d.version !== 1 && d.version !== undefined) return false;
+    if (!Array.isArray(d.games) || d.games.length === 0) return false;
+    for (const g of d.games) {
+      if (!g || typeof g !== 'object') return false;
+      const game = g as Record<string, unknown>;
+      if (!Array.isArray(game.history)) return false;
+      if (typeof (game.winner ?? 0) !== 'number' && game.winner !== null) return false;
+      if (typeof (game.turns ?? 0) !== 'number') return false;
+    }
+    const pc = d.playerCount as number;
+    if (typeof pc !== 'number' || pc < 2 || pc > 12) return false;
+    const cfg = d.layoutConfig as Record<string, unknown>;
+    if (!cfg || typeof cfg !== 'object') return false;
+    if (!Array.isArray(cfg.playerColors) || cfg.playerColors.length < pc) return false;
+    if (!Array.isArray(cfg.playerAngles) || cfg.playerAngles.length < pc) return false;
+    if (!Array.isArray(cfg.endRadii) || !Array.isArray(cfg.endSpotRadii)) return false;
+    if (cfg.playerCount !== pc) return false;
+    return true;
+  };
+
+  const handleImport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      setImportError(null);
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text) as unknown;
+        if (!validateImportData(parsed)) {
+          setImportError('Invalid simulation file. Check format and version.');
+          return;
+        }
+        const { version: _v, ...simData } = parsed as SimulationData & { version?: number };
+        simContext?.setSimulationData(simData as SimulationData);
+        e.target.value = '';
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : 'Failed to parse file.');
+      }
+    },
+    [simContext]
+  );
+
   return (
       <div className="sim-setup-view custom-scrollbar">
         <h1 className="sim-page-title">Simulation</h1>
@@ -323,9 +394,39 @@ export default function SimulationPage() {
               <label>Number of games</label>
               <input type="number" min={1} max={100000} value={numGames} onChange={(e) => setNumGames(Math.max(1, Math.min(100000, Number(e.target.value) || 10)))} />
             </div>
-            <button type="button" className="sim-btn-run" onClick={handleRun} disabled={isRunning}>
-              {isRunning ? 'Running…' : 'Run simulation'}
-            </button>
+            <div className="sim-actions-col">
+              <div className="sim-actions-row">
+                <button type="button" className="sim-btn-run" onClick={handleRun} disabled={isRunning}>
+                  {isRunning ? 'Running…' : 'Run simulation'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="sim-import-input"
+                  aria-hidden
+                  onChange={handleImport}
+                />
+                <button
+                  type="button"
+                  className="sim-btn-import"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isRunning}
+                >
+                  Import simulation
+                </button>
+              </div>
+              {result && games.length > 0 && (
+                <button type="button" className="sim-btn-export sim-btn-export-below" onClick={handleExport}>
+                  Export simulation
+                </button>
+              )}
+            </div>
+            {importError && (
+              <p className="sim-import-error" role="alert">
+                {importError}
+              </p>
+            )}
           </div>
         </div>
         <aside className="sim-results-container">

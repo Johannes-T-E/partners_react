@@ -924,24 +924,96 @@ body {
   border-radius: 0;
 }
 
-.sim-btn-run {
+.sim-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-top: 1rem;
+}
+
+.sim-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sim-btn-export,
+.sim-btn-export-below {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sim-btn-export:hover,
+.sim-btn-export-below:hover {
+  background: var(--ui-panel);
+  border-color: var(--ui-text-muted);
+}
+
+.sim-btn-export-below {
   width: 100%;
+}
+
+.sim-import-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sim-btn-import {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sim-btn-import:hover:not(:disabled) {
+  background: var(--ui-panel);
+  border-color: var(--ui-text-muted);
+}
+
+.sim-btn-import:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sim-import-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #ef4444;
+}
+
+.sim-btn-run {
+  margin-top: 0;
+  flex: 1;
+  min-width: 120px;
   padding: 0.65rem 1.5rem;
-  background: transparent;
-  color: var(--ui-success);
-  border: 1px solid var(--ui-success);
+  background: var(--ui-accent);
+  color: #fff;
+  border: none;
   border-radius: 0;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, filter 0.15s;
 }
 
 .sim-btn-run:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border-color: #4ade80;
+  background: var(--ui-accent-hover);
 }
 
 .sim-btn-run:disabled {
@@ -1320,6 +1392,45 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.sim-results-turns-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.sim-results-turns-header .sim-results-section-title {
+  margin: 0;
+}
+
+.sim-turns-axis-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.sim-turns-axis-label {
+  white-space: nowrap;
+}
+
+.sim-turns-axis-input {
+  width: 4.5rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 0;
+}
+
+.sim-turns-axis-input:focus {
+  outline: none;
+  border-color: var(--ui-accent);
 }
 
 .sim-turns-diagram {
@@ -1823,13 +1934,19 @@ body {
   text-align: right;
 }
 
+.sim-game-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .sim-btn-replay {
-  margin-top: 0.25rem;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--ui-text);
-  background: #a855f7;
+  color: #fff;
+  background: var(--ui-accent);
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -1837,7 +1954,7 @@ body {
 }
 
 .sim-btn-replay:hover {
-  background: #9333ea;
+  background: var(--ui-accent-hover);
 }
 
 

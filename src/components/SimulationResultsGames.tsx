@@ -44,6 +44,8 @@ export interface SimulationResultsGamesProps {
   selectedGameIndices?: number[];
   onGameClick: (index: number, metaKey?: boolean) => void;
   onReplayClick?: () => void;
+  /** Export full simulation (e.g. on Replay page). On Simulation page, Export is in the results header. */
+  onExportClick?: () => void;
   /** Hide the Replay button (e.g. when already on Replay page). */
   hideReplayButton?: boolean;
   /** When on Replay page: jump to last move when selecting a game. */
@@ -59,6 +61,7 @@ export default function SimulationResultsGames({
   selectedGameIndices = [],
   onGameClick,
   onReplayClick,
+  onExportClick,
   hideReplayButton = false,
   lockLast,
   onLockLastChange,
@@ -201,11 +204,18 @@ export default function SimulationResultsGames({
               <span className="sim-game-detail-val sim-game-detail-val-num">{gameStats.rounds}</span>
             </div>
           </div>
-          {!hideReplayButton && onReplayClick && (
-            <button type="button" className="sim-btn-replay" onClick={onReplayClick}>
-              Replay
-            </button>
-          )}
+          <div className="sim-game-detail-actions">
+            {!hideReplayButton && onReplayClick && (
+              <button type="button" className="sim-btn-replay" onClick={onReplayClick}>
+                Replay
+              </button>
+            )}
+            {onExportClick && (
+              <button type="button" className="sim-btn-export" onClick={onExportClick}>
+                Export simulation
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

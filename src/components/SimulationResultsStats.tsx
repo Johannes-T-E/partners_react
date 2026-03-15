@@ -38,7 +38,9 @@ export interface SimulationResultsStatsProps {
   gameSettings?: GameSettings;
 }
 
-const MAX_TURNS_AXIS = 400;
+const DEFAULT_MAX_TURNS_AXIS = 400;
+const MIN_MAX_TURNS = 50;
+const MAX_MAX_TURNS = 2000;
 
 export default function SimulationResultsStats({
   result,
@@ -51,6 +53,7 @@ export default function SimulationResultsStats({
 }: SimulationResultsStatsProps) {
   const [activeTab, setActiveTab] = useState<'simulation' | 'selection' | 'heatmap'>('simulation');
   const [heatmapExcludeStartTiles, setHeatmapExcludeStartTiles] = useState(false);
+  const [maxTurnsAxis, setMaxTurnsAxis] = useState(DEFAULT_MAX_TURNS_AXIS);
   const selectionStats = selectedGames.length > 0 ? computeHistoryStats(selectedGames, players) : undefined;
   const heatmapState = useMemo(
     () => (gameSettings ? createGameStateFromSettings(gameSettings) : null),
@@ -87,6 +90,7 @@ export default function SimulationResultsStats({
     }],
   };
 
+  const clampedMaxTurns = Math.max(MIN_MAX_TURNS, Math.min(MAX_MAX_TURNS, maxTurnsAxis));
   const boxOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -101,7 +105,7 @@ export default function SimulationResultsStats({
         grid: { color: 'rgba(168, 85, 247, 0.14)' },
         ticks: { color: '#a1a1aa', font: { size: 10 } },
         min: 0,
-        max: MAX_TURNS_AXIS,
+        max: clampedMaxTurns,
       },
       y: {
         grid: { display: false },
@@ -193,7 +197,20 @@ export default function SimulationResultsStats({
         </div>
       </div>
       <div className="sim-results-turns">
-        <h4 className="sim-results-section-title">Game length (turns)</h4>
+        <div className="sim-results-turns-header">
+          <h4 className="sim-results-section-title">Game length (turns)</h4>
+          <label className="sim-turns-axis-control">
+            <span className="sim-turns-axis-label">Max axis</span>
+            <input
+              type="number"
+              min={MIN_MAX_TURNS}
+              max={MAX_MAX_TURNS}
+              value={maxTurnsAxis}
+              onChange={(e) => setMaxTurnsAxis(Math.max(MIN_MAX_TURNS, Math.min(MAX_MAX_TURNS, Number(e.target.value) || DEFAULT_MAX_TURNS_AXIS)))}
+              className="sim-turns-axis-input"
+            />
+          </label>
+        </div>
         <div className="sim-chartjs-boxplot">
           <Chart type="boxplot" data={boxData} options={boxOptions} height={140} />
         </div>

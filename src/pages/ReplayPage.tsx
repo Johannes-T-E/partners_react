@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getPlayerIndex } from '@game/types';
 import type { GameResultWithHistory } from '@game/simulation';
+import { summarizeTurns } from '@game/simulation';
+import type { SimulationData } from '@/contexts/SimulationContext';
 import { Board } from '@/components/Board';
 import HistoryEntryComponent from '@/components/HistoryEntry';
 import ResizablePanel from '@/components/ResizablePanel';
@@ -11,7 +13,12 @@ import { buildCenterCardsFromHistory } from '@/lib/buildCenterCards';
 import { animateActionForReplay, animateDealForReplay, animateExchangeForReplay, animateFoldForReplay } from '@/lib/animate-move';
 import type { CenterCard } from '@web-ui/board-renderer';
 import { getMoverIdsFromEntry } from '@game/history-format';
+import { partnersExist } from '@game/index';
 import { useSimulation } from '@/contexts/SimulationContext';
+
+const SESSION_STORAGE_KEY = 'partners-replay-session';
+const SESSION_STORAGE_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+const EXPORT_VERSION = 1;
 
 export interface ReplayLocationState {
   games: GameResultWithHistory[];
@@ -35,11 +42,27 @@ const HISTORY_FILTER_LABELS: Record<string, string> = {
   meta: 'Setup',
 };
 
+function loadReplayFromSessionStorage(): ReplayLocationState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as ReplayLocationState;
+    if (parsed?.games?.length > 0 && parsed?.layoutConfig) return parsed;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export default function ReplayPage() {
   const location = useLocation();
   const simContext = useSimulation();
   const navState = location.state as ReplayLocationState | { gameIndex?: number } | null;
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Restore from sessionStorage on reload (when ctx and nav state are lost)
+  const [restoredFromStorage] = useState<ReplayLocationState | null>(loadReplayFromSessionStorage);
 
   // Prefer SimulationContext to avoid history state size limit (large games with 5+ players).
   // navState may contain only gameIndex when coming from Simulation page.
@@ -55,7 +78,7 @@ export default function ReplayPage() {
         }
       : navState && (navState as ReplayLocationState).games?.length > 0
         ? (navState as ReplayLocationState)
-        : null;
+        : restoredFromStorage;
   const applyZoomPanRef = useRef<(() => void) | null>(null);
 
   const [replayGameIndex, setReplayGameIndex] = useState(state?.gameIndex ?? 0);
@@ -105,6 +128,26 @@ export default function ReplayPage() {
       setReplayIndex(startAt);
     }
   }, [state?.gameIndex, games.length]);
+
+  // Persist to sessionStorage so reload restores the replay session
+  useEffect(() => {
+    if (!state || games.length === 0 || !layoutConfig) return;
+    try {
+      const toStore = {
+        games: state.games,
+        gameIndex: replayGameIndex,
+        playerCount: state.playerCount,
+        playerAliases: state.playerAliases,
+        layoutConfig: state.layoutConfig,
+      };
+      const json = JSON.stringify(toStore);
+      if (json.length <= SESSION_STORAGE_MAX_BYTES) {
+        sessionStorage.setItem(SESSION_STORAGE_KEY, json);
+      }
+    } catch {
+      /* quota exceeded or disabled - degrade gracefully */
+    }
+  }, [state, games.length, layoutConfig, replayGameIndex]);
 
   useEffect(() => {
     return () => {
@@ -307,6 +350,50 @@ export default function ReplayPage() {
     // or we would stop immediately when Play is pressed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animateMove]);
+
+  const handleExport = useCallback(() => {
+    if (games.length === 0 || !layoutConfig || !state) return;
+    const turns = games.map((g) => g.turns);
+    const stats = summarizeTurns(turns);
+    const winCountLength = partnersExist(players) ? Math.floor(players / 2) : players;
+    const teamWins = new Array(winCountLength).fill(0);
+    let draws = 0;
+    for (const g of games) {
+      if (g.winner !== null) teamWins[g.winner]++;
+      else draws++;
+    }
+    const data: SimulationData & { version: number } = {
+      version: EXPORT_VERSION,
+      result: {
+        totalGames: games.length,
+        teamWins,
+        draws,
+        maxTurnsReached: draws,
+        shortGamesCount: turns.filter((t) => t < 100).length,
+        longGamesCount: turns.filter((t) => t > 250).length,
+        winnerTurns: games.length <= 10000 ? games.map((g) => ({ winner: g.winner ?? 0, turns: g.turns })) : undefined,
+        ...stats,
+        turns: games.length <= 10000 ? turns : undefined,
+      },
+      games,
+      playerCount: players,
+      playerAliases,
+      gameSettings: {
+        playerCount: players,
+        pawnsPerPlayer: layoutConfig.pawnsPerPlayer,
+        trackTilesPerPlayer: layoutConfig.trackTilesPerPlayer,
+      },
+      layoutConfig,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `partners-simulation-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [games, layoutConfig, state, players, playerAliases]);
 
   const handleGameSelect = (idx: number) => {
     if (idx === replayGameIndex) return;
@@ -556,6 +643,7 @@ export default function ReplayPage() {
             hideReplayButton
             lockLast={lockLast}
             onLockLastChange={setLockLast}
+            onExportClick={handleExport}
           />
         </div>
       </aside>
