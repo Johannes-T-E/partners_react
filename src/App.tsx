@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Nav from './components/Nav';
 import BoardEditorPage from './pages/BoardEditorPage';
 import SimulationPage from './pages/SimulationPage';
@@ -9,6 +10,7 @@ import { StrategyProvider } from './contexts/StrategyContext';
 
 export default function App() {
   return (
+    <>
     <StrategyProvider>
     <SimulationProvider>
     <div id="app">
@@ -28,5 +30,7 @@ export default function App() {
     </div>
     </SimulationProvider>
     </StrategyProvider>
+    <Analytics />
+    </>
   );
 }
