@@ -2,13 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   runGameWithHistory,
-  runGame,
   createRandomStrategy,
   createSmartStrategy,
   createRandomExchangeStrategy,
   createSmartExchangeStrategy,
 } from '@game/index';
 import { createSmartPlusStrategy, summarizeTurns, extractPerPlayerStatsFromGame, mergePerPlayerStats } from '@game/simulation';
+import { useStrategy } from '@/contexts/StrategyContext';
 import { getColorsForPlayerCount, partnersExist, getPartnerIndex } from '@game/index';
 import type { GameSettings } from '@game/types';
 import type { GameResultWithHistory, SimulationResult, PerPlayerHistoryStats } from '@game/simulation';
@@ -18,7 +18,7 @@ import { createDefaultBoardLayoutConfig, type BoardLayoutConfig } from '@/lib/bo
 import { getColorHex } from '@/lib/color-utils';
 import { useSimulation } from '@/contexts/SimulationContext';
 
-type StrategyName = 'random' | 'smart' | 'smartplus';
+type StrategyName = 'random' | 'smart' | 'smartplus' | 'custom';
 
 function getWinnerLabel(winner: number, playerCount: number, aliases?: string[]): string {
   const colors = getColorsForPlayerCount(playerCount);
@@ -36,8 +36,18 @@ function getWinnerLabel(winner: number, playerCount: number, aliases?: string[])
   return colors[winner] ?? `Player ${winner + 1}`;
 }
 
-function makeStrategies(name: StrategyName): { play: any; exchange: any } {
+function makeStrategies(
+  name: StrategyName,
+  customWeights?: { weights: import('@game/simulation').SmartWeights; base: 'smart' | 'smartplus' }
+): { play: any; exchange: any } {
   const rng = Math.random;
+  if (name === 'custom' && customWeights) {
+    const { weights, base } = customWeights;
+    if (base === 'smartplus') {
+      return { play: createSmartPlusStrategy(rng, weights), exchange: createSmartExchangeStrategy(rng) };
+    }
+    return { play: createSmartStrategy(rng, weights), exchange: createSmartExchangeStrategy(rng) };
+  }
   if (name === 'smart') return { play: createSmartStrategy(rng), exchange: createSmartExchangeStrategy(rng) };
   if (name === 'smartplus') return { play: createSmartPlusStrategy(rng), exchange: createSmartExchangeStrategy(rng) };
   return { play: createRandomStrategy(rng), exchange: createRandomExchangeStrategy(rng) };
@@ -46,6 +56,8 @@ function makeStrategies(name: StrategyName): { play: any; exchange: any } {
 export default function SimulationPage() {
   const navigate = useNavigate();
   const simContext = useSimulation();
+  const strategyCtx = useStrategy();
+  const activePreset = strategyCtx?.getActivePreset() ?? null;
   const [players, setPlayers] = useState(4);
   const [pawns, setPawns] = useState(4);
   const [tiles, setTiles] = useState(14);
@@ -101,8 +113,9 @@ export default function SimulationPage() {
     try {
       const stratList = strategies.slice(0, players);
       while (stratList.length < players) stratList.push('smart');
-      const playStrategies = stratList.map((s) => makeStrategies(s).play);
-      const exchangeStrategies = stratList.map((s) => makeStrategies(s).exchange);
+      const customWeights = activePreset ? { weights: activePreset.weights, base: activePreset.base } : undefined;
+      const playStrategies = stratList.map((s) => makeStrategies(s, s === 'custom' ? customWeights : undefined).play);
+      const exchangeStrategies = stratList.map((s) => makeStrategies(s, s === 'custom' ? customWeights : undefined).exchange);
       const winCountLength = partnersExist(players) ? Math.floor(players / 2) : players;
       const teamWins = new Array(winCountLength).fill(0);
       let draws = 0;
@@ -182,7 +195,7 @@ export default function SimulationPage() {
       setIsRunning(false);
       setProgress(null);
     }
-  }, [players, pawns, tiles, shuffleMode, strategies, numGames, playerAliases, simContext]);
+  }, [players, pawns, tiles, shuffleMode, strategies, numGames, playerAliases, simContext, activePreset]);
 
   const handleGameClick = (idx: number, metaKey?: boolean) => {
     setSelectedGameIndex(idx);
@@ -204,15 +217,10 @@ export default function SimulationPage() {
 
   const handleReplayClick = () => {
     if (selectedGameIndex !== null && games.length > 0) {
+      // Pass only gameIndex to avoid history state size limit (browsers ~640KB–2MB).
+      // Replay page reads games/layoutConfig from SimulationContext.
       navigate('/replay', {
-        state: {
-          games,
-          gameIndex: selectedGameIndex,
-          playerCount: players,
-          playerAliases,
-          layoutConfig,
-          gameSettings: settings,
-        },
+        state: { gameIndex: selectedGameIndex },
       });
     }
   };
@@ -301,6 +309,9 @@ export default function SimulationPage() {
                     <option value="smart">Smart</option>
                     <option value="smartplus">Smart+</option>
                     <option value="random">Random</option>
+                    <option value="custom" disabled={!activePreset}>
+                      Custom {activePreset ? `(${activePreset.name})` : '(no preset)'}
+                    </option>
                   </select>
                 </div>
               ))}

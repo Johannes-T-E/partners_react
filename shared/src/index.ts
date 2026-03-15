@@ -30,5 +30,5 @@ export {
   getLegalActionsForCard,
   getWinningTeam,
 } from './game-loop.js';
-export { runGame, runSimulation, runGameWithHistory, createRandomStrategy, createSmartStrategy, createSmartExchangeStrategy, createRandomExchangeStrategy, distanceToEnd, summarizeTurns, computeHistoryStats, computeSingleGameStats } from './simulation.js';
-export type { Strategy, ExchangeStrategy, GameResult, GameResultWithHistory, SimulationResult, HistoryEntry, HistoryStats, PerPlayerHistoryStats, SingleGameStats } from './simulation.js';
+export { runGame, runSimulation, runGameWithHistory, createRandomStrategy, createSmartStrategy, createSmartExchangeStrategy, createRandomExchangeStrategy, distanceToEnd, summarizeTurns, computeHistoryStats, computeSingleGameStats, DEFAULT_SMART_WEIGHTS } from './simulation.js';
+export type { Strategy, ExchangeStrategy, GameResult, GameResultWithHistory, SimulationResult, HistoryEntry, HistoryStats, PerPlayerHistoryStats, SingleGameStats, SmartWeights } from './simulation.js';

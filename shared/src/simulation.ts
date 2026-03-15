@@ -85,17 +85,32 @@ function trackDistForward(from: number, to: number, N: number): number {
 
 // ── Smart strategy ──
 
-const W_PROGRESS = 1;
-const W_BUMP = 20;
-const W_START = 15;
-const W_LOCK = 50;
-const W_EXPOSED = -3;
-const W_PARTNER = 0.3;
+/** Configurable weights for Smart and SmartPlus strategies. */
+export interface SmartWeights {
+  progress: number;
+  bump: number;
+  start: number;
+  lock: number;
+  exposed: number;
+  partner: number;
+  lockable: number;
+}
 
-function scoreState(
+export const DEFAULT_SMART_WEIGHTS: SmartWeights = {
+  progress: 1,
+  bump: 20,
+  start: 15,
+  lock: 50,
+  exposed: -3,
+  partner: 0.3,
+  lockable: 25,
+};
+
+function scoreStateWithWeights(
   state: GameState,
   prevState: GameState,
   playerIndex: number,
+  w: SmartWeights,
 ): number {
   const pc = state.settings.playerCount;
   const colors = getColorsForPlayerCount(pc);
@@ -110,11 +125,11 @@ function scoreState(
   for (const m of state.movers) {
     if (m.color === myColor) {
       const d = distanceToEnd(m, state.board, pc);
-      score += (maxDist - d) * W_PROGRESS;
+      score += (maxDist - d) * w.progress;
     }
     if (partnerColor && m.color === partnerColor) {
       const d = distanceToEnd(m, state.board, pc);
-      score += (maxDist - d) * W_PROGRESS * W_PARTNER;
+      score += (maxDist - d) * w.progress * w.partner;
     }
   }
 
@@ -124,7 +139,7 @@ function scoreState(
     if (!isHomeNode(m.pos)) continue;
     const prev = prevState.movers.find((pm) => pm.id === m.id);
     if (prev && !isHomeNode(prev.pos)) {
-      score += W_BUMP;
+      score += w.bump;
     }
   }
 
@@ -134,7 +149,7 @@ function scoreState(
     if (!isStartNode(m.pos)) continue;
     const prev = prevState.movers.find((pm) => pm.id === m.id);
     if (prev && isHomeNode(prev.pos)) {
-      score += W_START;
+      score += w.start;
     }
   }
 
@@ -144,7 +159,7 @@ function scoreState(
     if (!m.locked) continue;
     const prev = prevState.movers.find((pm) => pm.id === m.id);
     if (prev && !prev.locked) {
-      score += m.color === myColor ? W_LOCK : W_LOCK * W_PARTNER;
+      score += m.color === myColor ? w.lock : w.lock * w.partner;
     }
   }
 
@@ -154,7 +169,7 @@ function scoreState(
     if (!isTrackNode(m.pos)) continue;
     const sameNode = state.movers.filter((o) => o.pos === m.pos && o.color === myColor);
     if (sameNode.length < 2) {
-      score += W_EXPOSED;
+      score += w.exposed;
     }
   }
 
@@ -162,7 +177,7 @@ function scoreState(
 }
 
 /** Create a strategy that evaluates each legal action by simulating it and scoring the result. */
-export function createSmartStrategy(rng: () => number = Math.random): Strategy {
+export function createSmartStrategy(rng: () => number = Math.random, weights: SmartWeights = DEFAULT_SMART_WEIGHTS): Strategy {
   return (state, playerIndex, card, legalActions) => {
     if (legalActions.length === 0) return 'pass';
     if (legalActions.length === 1) return legalActions[0];
@@ -172,7 +187,7 @@ export function createSmartStrategy(rng: () => number = Math.random): Strategy {
 
     for (const action of legalActions) {
       const nextState = applyAction(state, playerIndex, card, action);
-      const s = scoreState(nextState, state, playerIndex) + rng() * 0.01;
+      const s = scoreStateWithWeights(nextState, state, playerIndex, weights) + rng() * 0.01;
       if (s > bestScore) {
         bestScore = s;
         bestAction = action;
@@ -184,8 +199,6 @@ export function createSmartStrategy(rng: () => number = Math.random): Strategy {
 }
 
 // ── Smart+ strategy (card-aware end zone planning) ──
-
-const W_LOCKABLE = 25;
 
 function cardsEqual(a: Card, b: Card): boolean {
   if (a.type !== b.type) return false;
@@ -228,7 +241,7 @@ function canLockPawnWithHand(mover: Mover, board: BoardConfig, hand: Card[]): bo
 }
 
 /** Create a strategy that extends smart with card-aware end zone planning. */
-export function createSmartPlusStrategy(rng: () => number = Math.random): Strategy {
+export function createSmartPlusStrategy(rng: () => number = Math.random, weights: SmartWeights = DEFAULT_SMART_WEIGHTS): Strategy {
   return (state, playerIndex, card, legalActions) => {
     if (legalActions.length === 0) return 'pass';
     if (legalActions.length === 1) return legalActions[0];
@@ -247,12 +260,12 @@ export function createSmartPlusStrategy(rng: () => number = Math.random): Strate
 
     for (const action of legalActions) {
       const nextState = applyAction(state, playerIndex, card, action);
-      let s = scoreState(nextState, state, playerIndex);
+      let s = scoreStateWithWeights(nextState, state, playerIndex, weights);
 
       for (const m of nextState.movers) {
         if (m.color !== myColor && (!partnerColor || m.color !== partnerColor)) continue;
         if (canLockPawnWithHand(m, nextState.board, remainingHand)) {
-          s += m.color === myColor ? W_LOCKABLE : W_LOCKABLE * W_PARTNER;
+          s += m.color === myColor ? weights.lockable : weights.lockable * weights.partner;
         }
       }
 

@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { path: '/editor', label: 'Board Editor' },
-  // Play disabled for now
   { path: '/simulation', label: 'Simulation' },
+  { path: '/strategy', label: 'Strategies' },
   { path: '/replay', label: 'Replay' },
 ] as const;
 

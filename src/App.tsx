@@ -3,10 +3,13 @@ import Nav from './components/Nav';
 import BoardEditorPage from './pages/BoardEditorPage';
 import SimulationPage from './pages/SimulationPage';
 import ReplayPage from './pages/ReplayPage';
+import StrategyPage from './pages/StrategyPage';
 import { SimulationProvider } from './contexts/SimulationContext';
+import { StrategyProvider } from './contexts/StrategyContext';
 
 export default function App() {
   return (
+    <StrategyProvider>
     <SimulationProvider>
     <div id="app">
       <Nav />
@@ -18,10 +21,12 @@ export default function App() {
         <Route path="/play" element={<Navigate to="/simulation" replace />} />
         <Route path="/simulation" element={<SimulationPage />} />
         <Route path="/replay" element={<ReplayPage />} />
+        <Route path="/strategy" element={<StrategyPage />} />
         </Routes>
         </div>
       </main>
     </div>
     </SimulationProvider>
+    </StrategyProvider>
   );
 }

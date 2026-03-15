@@ -38,16 +38,24 @@ const HISTORY_FILTER_LABELS: Record<string, string> = {
 export default function ReplayPage() {
   const location = useLocation();
   const simContext = useSimulation();
-  const navState = location.state as ReplayLocationState | null;
+  const navState = location.state as ReplayLocationState | { gameIndex?: number } | null;
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const state = navState ?? (simContext?.simulationData ? {
-    games: simContext.simulationData.games,
-    gameIndex: 0,
-    playerCount: simContext.simulationData.playerCount,
-    playerAliases: simContext.simulationData.playerAliases,
-    layoutConfig: simContext.simulationData.layoutConfig,
-  } : null);
+  // Prefer SimulationContext to avoid history state size limit (large games with 5+ players).
+  // navState may contain only gameIndex when coming from Simulation page.
+  const ctxData = simContext?.simulationData;
+  const state =
+    ctxData && ctxData.games.length > 0
+      ? {
+          games: ctxData.games,
+          gameIndex: navState?.gameIndex ?? 0,
+          playerCount: ctxData.playerCount,
+          playerAliases: ctxData.playerAliases,
+          layoutConfig: ctxData.layoutConfig,
+        }
+      : navState && (navState as ReplayLocationState).games?.length > 0
+        ? (navState as ReplayLocationState)
+        : null;
   const applyZoomPanRef = useRef<(() => void) | null>(null);
 
   const [replayGameIndex, setReplayGameIndex] = useState(state?.gameIndex ?? 0);
