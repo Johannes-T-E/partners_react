@@ -180,7 +180,7 @@ export default function Board({
     if (!wrapper || !interactive || !layoutConfig) return;
 
     const viewSize = layoutConfig.viewSize ?? 900;
-    const ZOOM_FACTOR = 1.0; // Slightly zoomed in from exact fit
+    const ZOOM_FACTOR = 0.70; // Zoom out slightly from exact fit (1.0 = fit, <1 = zoom out)
     const fitToViewport = () => {
       const w = wrapper.clientWidth;
       const h = wrapper.clientHeight;
