@@ -2,6 +2,8 @@
 
 Side project for learning React and TypeScript. I wanted something with enough rules to be interesting but not so big I'd never finish it — PARTNERS fit.
 
+Live demo: [partners-boardgame-simulation.vercel.app](https://partners-boardgame-simulation.vercel.app)
+
 **PARTNERS** is a team board game. Each player has a color and a partner sitting across the table. You get dealt cards, swap one with your partner each round, then play cards to move pawns around a shared track. Bump opponents back to home, get all your pawns into the end zone, lock them in. First team to lock every pawn wins.
 
 This repo is a browser UI on top of a game engine I wrote in `shared/src/`. The engine handles the full rules: dealing, partner exchange, special cards (7-split, swap, start cards, four-back, etc.), knockouts, locks, folds.
@@ -20,7 +22,9 @@ When a run finishes you get win counts, turn stats, box plots, and per-player br
 
 **Board editor** — Tweak board dimensions and colors without running a game. Save/load color themes.
 
-## Run it
+## Run it locally
+
+Or just use the [live demo](https://partners-boardgame-simulation.vercel.app).
 
 ```bash
 npm install
